@@ -3,42 +3,30 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"sync"
 )
 
 func main() {
-    send := make(chan int, 10)
-    recieve := make(chan int, 10)
-    var wg sync.WaitGroup
+	// Ёмкость 10, чтобы генератор успел заполнить send без блокировки на читателе.
+	send := make(chan int, 10)
+	receive := make(chan int, 10)
 
-    // Горутина генерации чисел
-    go func() {
-        slice := make([]int, 10)
-        for i := 0; i < 10; i++ {
-            slice[i] = rand.Intn(101)
-        }
-        for _, item := range slice {
-            send <- item
-        }
-        close(send)
-    }()
+	go func() {
+		for i := 0; i < 10; i++ {
+			send <- rand.Intn(101)
+		}
+		close(send)
+	}()
 
-    wg.Add(1)
-    // Горутина возведения в квадрат
-    go func() {
-        defer wg.Done()
-        for val := range send {
-            recieve <- val * val
-        }
-        close(recieve)
-    }()
+	go func() {
+		for val := range send {
+			receive <- val * val
+		}
+		close(receive)
+	}()
 
-    // main читает результаты
-    for ch := range recieve {
-        fmt.Println(ch)
-    }
-
-    wg.Wait()
-    fmt.Println("Done")
+	// Дожидаемся всех 10 чисел (канал закроется после квадратов) и выводим в консоль.
+	for v := range receive {
+		fmt.Println(v)
+	}
+	fmt.Println("Done")
 }
-
